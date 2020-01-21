@@ -652,7 +652,7 @@ namespace 服务端
                 $"select ScriptName, mobile, ip from MobileScriptModule where uploadflog =2 and PacketChannel ='{Gnpy}'",
                 new List<SqlParameter>().ToArray()).Tables[0];
 
-            for (var i = 0; i < dateTable.Rows.Count; i++)2
+            for (var i = 0; i < dateTable.Rows.Count; i++)
             {
                 var MID = SqlHelper.ExecuteDataSet(
                     CommandType.Text,
