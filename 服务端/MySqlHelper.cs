@@ -21,14 +21,19 @@ namespace 服务端
         // 从配置文件读取连接字符串
         private static string connstr = string.Empty;
         #region 初始化连接字符串
+
         /// <summary>
         /// 初始化连接字符串
         /// </summary>
+        /// <param name="passWord"></param>
         /// <param name="connStr"></param>
+        /// <param name="host"></param>
+        /// <param name="userName"></param>
         /// <returns></returns>
-        public static void InitConnectStr(string connStr)
+        public static void InitConnectStr(string host, string userName, string passWord, string connStr)
         {
-            connstr = @"Host=192.168.9.179;UserName=wjq;Password=wjq;Database=" + connStr + @";Port=3306;CharSet=gbk";
+            connstr = $@"Host={host};UserName={userName};Password={passWord};Database={connStr};Port=3306;CharSet=gbk";
+            //connstr = @"Host=192.168.9.179;UserName=htl;Password=123456;Database=" + connStr + @";Port=3306;CharSet=gbk";
         }
         #endregion
 
@@ -374,38 +379,31 @@ namespace 服务端
 
         }
 
-        public static bool IntoSQL(string FailPah, string connStr)
+        public static bool IntoSQL(string FailPah, string host, string userName, string passWord, string connStr)
         {
             var strMysqlFilePath = AppDomain.CurrentDomain.SetupInformation.ApplicationBase + "Tools\\mysql.exe";
-            const string strIP = "192.168.9.179";
-            const string strUserName = "wjq";
-            const string strPassWord = "wjq";
-            const string strPort = "3306";
-			var result = ScriptBrush(FailPah, strMysqlFilePath, strIP, strUserName, strPassWord, strPort, connStr);
+            var result = ScriptBrush(FailPah, strMysqlFilePath, host, userName, passWord, "3306", connStr);
 			
             if (result == string.Empty)
             {
                 return true;
             }
-			
-			else
-			{
-				MessageBox.Show(result);
-				return false;
-			}
+
+            MessageBox.Show(result);
+            return false;
 
 
-            
+
         }
 
-        private static string ScriptBrush(string strScirptFilePah, string strMysqlFilePath, string strIP, string strUserName, string strPassWord, string strPort, string strDataBaseName)
+        private static string ScriptBrush(string strScirptFilePah, string strMysqlFilePath, string strIp, string strUserName, string strPassWord, string strPort, string strDataBaseName)
         {
             try
             {
                 strDataBaseName = "\"" + strDataBaseName + "\"";
                 strScirptFilePah = "\"" + strScirptFilePah + "\"";
                 strMysqlFilePath = "\"" + strMysqlFilePath + "\"";
-                var str = strMysqlFilePath + " -h" + strIP + " -u" + strUserName + " -p" + strPassWord + " -P" + strPort + " " + strDataBaseName + "<" + strScirptFilePah;
+                var str = strMysqlFilePath + " -h" + strIp + " -u" + strUserName + " -p" + strPassWord + " -P" + strPort + " " + strDataBaseName + "<" + strScirptFilePah;
                 var process = new Process
                                   {
                                       StartInfo =
@@ -426,6 +424,53 @@ namespace 服务端
                 var end = process.StandardError.ReadToEnd();
                 process.StandardError.Close();
                 return end;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        #endregion
+
+        #region 备份交易服数据
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="userName"></param>
+        /// <param name="passWord"></param>
+        /// <param name="dataBaseName"></param>
+        /// <param name="tableName"></param>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public static string BackupsTrade(string host, string userName, string passWord, string dataBaseName, string tableName, string filePath)
+        {
+            var str =
+                $"{AppDomain.CurrentDomain.SetupInformation.ApplicationBase}Tools\\mysqldump.exe -h{host} -u{userName} -p{passWord} -P3306 -y --no-tablespaces --compact --skip-extended-insert --default-character-set=gb2312 -t {dataBaseName} {tableName}>{filePath}";
+
+            try
+            {
+                var process = new Process
+                {
+                    StartInfo =
+                    {
+                        FileName = "cmd.exe",
+                        RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    }
+                };
+                process.Start();
+                process.StandardInput.WriteLine(str);
+                process.StandardInput.WriteLine("exit");
+                while (!process.HasExited)
+                    process.WaitForExit(100);
+                var end = process.StandardError.ReadToEnd();
+                process.StandardError.Close();
+                return end=="" ? "交易服表数据备份成功" : end;
             }
             catch (Exception ex)
             {

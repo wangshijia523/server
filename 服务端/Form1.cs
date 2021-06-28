@@ -8,6 +8,9 @@
 // --------------------------------------------------------------------------------------------------------------------
 
 
+using System.Text.RegularExpressions;
+using CCWin;
+
 namespace 服务端
 {
     using System;
@@ -20,7 +23,7 @@ namespace 服务端
     using System.Net.Sockets;
     using System.Threading;
     using System.Windows.Forms;
-    using CCWin;
+
 
     /// <inheritdoc />
     /// <summary>TODO The form 1.</summary>
@@ -60,20 +63,36 @@ namespace 服务端
         {
             while (true)
             {
-                if (_sjmyHelper.TaskCheck)
+	            if (_sjmyHelper.TaskCheck)
                 {
+					
                     ShowMsg("查询到任务！！！！");
 
                     _sjmyHelper.ProjectSite = $@"D:\developer\{_sjmyHelper.Gnpy}";
 
-                    // 复制初始库，也要通过GNPY区分初始库
-                    ShowMsg("开始复制初始库");
-                    ShowMsg(_sjmyHelper.CopyInitial(_sjmyHelper.Gnpy, _sjmyHelper.AppSrc));
+					// 复制初始库，也要通过GNPY区分初始库
+					ShowMsg(RemoteConnect.ConnectState(@"\\172.24.140.83", "blacknull", "IDC2.passwd*()"));
+					ShowMsg(RemoteConnect.ConnectState(@"\\192.168.9.179", "blacknull", "shangjia!@#123.idc1"));
+					ShowMsg("开始复制初始库");
+                    var copyInitLog = _sjmyHelper.CopyInitial(_sjmyHelper.Gnpy, _sjmyHelper.AppSrc);
+                    ShowMsg(copyInitLog);
+                    if (copyInitLog != "初始库复制完成")
+                    {
+	                    ShowMsg("初始库复制异常, 终止任务");
+	                    Process.Start(
+		                    $@"{_sjmyHelper.ProjectSite}\data\lib\99uMessage.exe",
+		                    $@"{_sjmyHelper.Uid} 测试完成--推送IP:192.168.64.105，初始库复制异常，终止任务");
+	                    _sjmyHelper.SetScriptFlog(2);
+	                    Restart();
+	                    return;
+					}
 
                     // 刷库操作
                     switch (_sjmyHelper.Gnpy)
                     {
                         case "sjmy":
+
+
 
                             if (_sjmyHelper.GetSqlPath() != string.Empty)
                             {
@@ -81,7 +100,7 @@ namespace 服务端
                                 {
                                     ShowMsg("刷库异常,终止任务。");
                                     Process.Start(
-                                        $@"{_sjmyHelper.ProjectSite}lib\99uMessage.exe",
+                                        $@"{_sjmyHelper.ProjectSite}\data\lib\99uMessage.exe",
                                         $@"{_sjmyHelper.Uid} 测试完成--推送IP:192.168.64.105，刷库错误，任务已结束");
                                     _sjmyHelper.SetScriptFlog(2);
                                     Restart();
@@ -103,7 +122,7 @@ namespace 服务端
                                 {
                                     ShowMsg("刷库异常,终止任务。");
                                     Process.Start(
-                                        $@"{_sjmyHelper.ProjectSite}lib\99uMessage.exe",
+                                        $@"{_sjmyHelper.ProjectSite}\data\lib\99uMessage.exe",
                                         $@"{_sjmyHelper.Uid} 测试完成--推送IP:192.168.64.105，刷库错误，任务已结束");
                                     _sjmyHelper.SetScriptFlog(2);
                                     Restart();
@@ -126,7 +145,7 @@ namespace 服务端
                                 {
                                     ShowMsg("刷库异常,终止任务。");
                                     Process.Start(
-                                        $@"{_sjmyHelper.ProjectSite}lib\99uMessage.exe",
+                                        $@"{_sjmyHelper.ProjectSite}\data\lib\99uMessage.exe",
                                         $@"{_sjmyHelper.Uid} 测试完成--推送IP:192.168.64.105，刷库错误，任务已结束");
                                     _sjmyHelper.SetScriptFlog(2);
                                     Restart();
@@ -146,17 +165,24 @@ namespace 服务端
 
                     _sjmyHelper.RunCmdPython($@"{_sjmyHelper.ProjectSite}\data\script\servercase\sqlconfig.py", _sjmyHelper.AppSrc);
                     _sjmyHelper.RunCmdPython($@"{_sjmyHelper.ProjectSite}\data\script\servercase\server.py", _sjmyHelper.GetSeversion(), _sjmyHelper.GetNpcVer());
+					
                     ShowMsg("换库操作完成，服务器若开启失败请检查pythonSyslog");
 
-                    // 清除交易服数据
-                    if (_iniFile.IniReadValue("server", "TradingDel") == "1" && _sjmyHelper.Gnpy == "sjmy")
+                    // 清除交易服数据 (独立xsj和sjmy)
+
+                    switch (_sjmyHelper.Gnpy)
                     {
-                        _sjmyHelper.DelDeal();
-                        ShowMsg("交易服数据清除完成");
-                    }
-                    else
-                    {
-                        ShowMsg("本次任务不清除交易服数据");
+	                    case "sjmy" when _iniFile.IniReadValue("server", "TradingDelSjmy") == "1":
+		                    ShowMsg(_sjmyHelper.DelDeal(_sjmyHelper.Mtid, _sjmyHelper.Gnpy));
+		                    ShowMsg("交易服数据清除完成");
+		                    break;
+	                    case "xsjmy" when _iniFile.IniReadValue("server", "TradingDelXsj") == "1":
+		                    ShowMsg(_sjmyHelper.DelDeal(_sjmyHelper.Mtid, _sjmyHelper.Gnpy));
+		                    ShowMsg("交易服数据清除完成");
+		                    break;
+	                    default:
+		                    ShowMsg("本次任务不清除交易服数据");
+		                    break;
                     }
 
                     // 群发送给客户端 
@@ -168,7 +194,7 @@ namespace 服务端
 
                     // 修改ScriptFlog = 1
                     _sjmyHelper.SetScriptFlog(1);
-
+					
                     _sjmyHelper.StartTime = DateTime.Now.ToString(CultureInfo.InvariantCulture);
 
                     break;
@@ -193,7 +219,8 @@ namespace 服务端
             {
 
                 ShowMsg(RemoteConnect.ConnectState(_sjmyHelper.Site, _sjmyHelper.Account, _sjmyHelper.Password));
-                ShowMsg(RemoteConnect.ConnectState(@"\\192.168.9.179", "qadwnew", "qadwnew123."));
+                ShowMsg(RemoteConnect.ConnectState(@"\\192.168.9.179", "blacknull", "shangjia!@#123.idc1"));
+                ShowMsg(RemoteConnect.ConnectState(@"\\172.24.140.83", "blacknull", "IDC2.passwd*()"));
                 Directory.SetCurrentDirectory(@"D:\developer");
 
                 const int port = 6000;
@@ -241,11 +268,11 @@ namespace 服务端
             if (log.InvokeRequired)
             {
                 Textbdelegate dt = ShowMsg;
-                log.Invoke(dt, msg + "\t\n");
+                log.Invoke(dt, msg);
             }
             else
             {
-                log.AppendText(ServerSjmyHelper.GetTime() + msg + "\t\n");
+                log.AppendText(ServerSjmyHelper.GetTime() + msg + "\r\n");
             }
         }
 
@@ -291,7 +318,7 @@ namespace 服务端
                     var sockMsg = _sokWatch.Accept();
 
                     var clientipe = (IPEndPoint)sockMsg.RemoteEndPoint;
-                    string[] ipList = { "192.168.64.105", "192.168.64.106", "192.168.64.23", "192.168.64.107" };
+                    string[] ipList = { "192.168.255.63","192.168.255.120" };
                     if (!ipList.Contains(clientipe.Address.ToString()))
                     {
                         continue;
@@ -306,9 +333,16 @@ namespace 服务端
 
                     // 将服务器端的通信套接字存入字典集合。
                     _dictConn.Add(sockMsg.RemoteEndPoint.ToString(), conn);
-                    ShowMsg(sockMsg.RemoteEndPoint + " 成功连接！\t\n");
+                    ShowMsg(sockMsg.RemoteEndPoint + " 成功连接！");
 
                     conn.Send("成功与服务端建立连接！");
+
+                    if (monitorButton.Visible == false)
+                    {
+	                    _sjmyHelper.subControl += 1;
+
+                    }
+
                 }
             }
             catch (Exception ex)
@@ -369,6 +403,13 @@ namespace 服务端
 
             // 从字典中移除对应的通信管理类的项
             _dictConn.Remove(clientIpPort);
+
+            if (monitorButton.Visible == false)
+            {
+	            _sjmyHelper.subControl -= 1;
+
+            }
+
         }
         #endregion
 
@@ -385,11 +426,38 @@ namespace 服务端
         }
 
 
-        #endregion
+		#endregion
 
-        #region 分析客户端收到的消息
 
-        private void Analysis(string strMsg)
+		#region 判断是否需要上传log
+
+		private  string DecideLog()
+		{
+			try
+			{
+				if (_iniFile.IniReadValue("server", "LoadLog") == "0") return "本次任务无需上传log";
+
+
+				_sjmyHelper.RunCmdPython($@"{_sjmyHelper.ProjectSite}\data\script\servercase\sqlload.py");
+				DirFile.CopyFolder($@"{_sjmyHelper.ProjectSite}\data\result\serverlog",
+					$@"{_sjmyHelper.ApkSite}{_sjmyHelper.Gnpy}\{_sjmyHelper.AppSrc}\serverlog");
+
+				return "本次任务log已上传，为空请检查sqlload.py脚本";
+
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+				throw;
+			}
+		}
+
+
+		#endregion
+
+		#region 分析客户端收到的消息
+
+		private void Analysis(string strMsg)
         {
             try
             {
@@ -415,8 +483,8 @@ namespace 服务端
 
                                 _sjmyHelper.subControl = _dictConn.Count;
 
-                                GroupSend($"上传任务结果*{_sjmyHelper.GetPath()}*{_sjmyHelper.Gnpy}*{_sjmyHelper.AppSrc}");
-                                _sjmyHelper.InsertFailed();
+								GroupSend($"上传任务结果*{_sjmyHelper.GetPath()}*{_sjmyHelper.Gnpy}*{_sjmyHelper.AppSrc}*{_iniFile.IniReadValue("client", "LoadDebug")}");
+								_sjmyHelper.InsertFailed();
                                 _sjmyHelper.InsertMobileUnpass();
                             }
 
@@ -430,25 +498,14 @@ namespace 服务端
                                 {
                                     _sjmyHelper.RecordTime = DateTime.Now.ToString(CultureInfo.InvariantCulture);
                                     ShowMsg("第二轮没有需要执行的脚本");
-                                    _sjmyHelper.InsertReult();
-                                    // 暂时不下载log  ，因为不上传
-                                    if (_iniFile.IniReadValue("server", "LoadLog") == "1")
-                                    {
-                                        _sjmyHelper.RunCmdPython(
-                                            $@"{_sjmyHelper.ProjectSite}\data\script\servercase\sqlload.py");
-                                    }
+                                    _sjmyHelper.subControl = _dictConn.Count;
 
-                                    Message99U("367085");
-                                    Message99U("201371");
-                                    if (_sjmyHelper.Uid != "367085" && _sjmyHelper.Uid != "201371")
-                                    {
-                                        Message99U(_sjmyHelper.Uid);
-                                    }
 
-                                    _sjmyHelper.SetScriptFlog(2);
-                                    ShowMsg($"任务id：{_sjmyHelper.Mtid}完成测试");
-                                    Restart();
-                                }
+									GroupSend($"上传任务结果*{_sjmyHelper.GetPath()}*{_sjmyHelper.Gnpy}*{_sjmyHelper.AppSrc}*{_iniFile.IniReadValue("client", "LoadDebug")}");
+									_sjmyHelper.InsertFailed();
+                                    _sjmyHelper.InsertMobileUnpass();
+
+								}
 
                                 else
                                 {
@@ -476,7 +533,7 @@ namespace 服务端
 
                             _sjmyHelper.subControl = _dictConn.Count;
 
-                            GroupSend($"上传任务结果*{_sjmyHelper.GetPath()}*{_sjmyHelper.Gnpy}*{_sjmyHelper.AppSrc}");
+                            GroupSend($"上传任务结果*{_sjmyHelper.GetPath()}*{_sjmyHelper.Gnpy}*{_sjmyHelper.AppSrc}*{_iniFile.IniReadValue("client", "LoadDebug")}");
                             _sjmyHelper.InsertFailed();
                             _sjmyHelper.InsertMobileUnpass();
                         }
@@ -493,13 +550,9 @@ namespace 服务端
                             _sjmyHelper.RecordTime = DateTime.Now.ToString(CultureInfo.InvariantCulture);
                             _sjmyHelper.InsertReult();
 
-                            // 暂时不下载log  ，因为不上传
-                            if (_iniFile.IniReadValue("server", "LoadLog") == "1")
-                            {
-                                _sjmyHelper.RunCmdPython($@"{_sjmyHelper.ProjectSite}\data\script\servercase\sqlload.py");
-                            }
+                            ShowMsg(DecideLog());
 
-                            Message99U("367085");
+							Message99U("367085");
                             Message99U("201371");
 
                             if (_sjmyHelper.Uid != "367085" && _sjmyHelper.Uid != "201371")
@@ -551,13 +604,13 @@ namespace 服务端
                 }
                 else
                 {
-                    ShowMsg("用户取消监听操作！！！\r\n");
+                    ShowMsg("用户取消监听操作！！！");
                     return;
                 }
             }
 
 
-            ShowMsg("开始监听！！！\r\n");
+            ShowMsg("开始监听！！！");
             monitorButton.Visible = false;
 
         }
@@ -568,9 +621,7 @@ namespace 服务端
 
         private void button1_Click(object sender, EventArgs e)
         {
-            _sjmyHelper.ProjectSite = @"D:\developer\myht";
-            _sjmyHelper.RunCmdPython($@"{_sjmyHelper.ProjectSite}\data\script\servercase\sqlconfig.py", "123456");
-            MessageBox.Show(@"ok");
+            Console.WriteLine(_sjmyHelper.GetOpenServerTime());
         }
 
         #endregion
@@ -590,9 +641,8 @@ namespace 服务端
         {
             Process.Start(
                 $@"{_sjmyHelper.ProjectSite}\data\lib\99uMessage.exe",
-                $@"{uid} 测试完成--推送IP:192.168.64.105，游戏名称:手机魔域，任务编号:{
-                        _sjmyHelper.Mtid}，app:{
-                        _sjmyHelper.ApkName
+                $@"{uid} 测试完成--推送IP:192.168.64.105，游戏名称:{GetGameName()}，任务编号:{
+                        _sjmyHelper.Mtid}，app:{ConvertToEn(_sjmyHelper.ApkName)
                     }，客户端版本号:{_sjmyHelper.ApkVersion}，总脚本数:{_sjmyHelper.ALLNum}，通过:{
                         _sjmyHelper.PassNum()
                     }，不通过:{_sjmyHelper.UnpassNum()}，失败:{_sjmyHelper.FailedNum()}，报告链接:{
@@ -604,20 +654,66 @@ namespace 服务端
 
         private void button2_Click(object sender, EventArgs e)
         {
-            _sjmyHelper.ProjectSite = @"D:\developer\sjmy";
-            _sjmyHelper.RunCmdPython($@"{_sjmyHelper.ProjectSite}\data\script\servercase\sqlconfig.py", "123456");
-        }
+			_sjmyHelper.Gnpy = "sjmy";
+			_sjmyHelper.Mtid = 5932;
+			//_sjmyHelper.ProjectSite = $@"D:\developer\{_sjmyHelper.Gnpy}";
+			//_sjmyHelper.Mtid = 1;
+			//_sjmyHelper.ApkName = "myht_android_ndsdk_full_2.2.9_1502（1）.apk";
+			//_sjmyHelper.ApkVersion = "0";
+			//_sjmyHelper.ALLNum = 1;
+			//_sjmyHelper.AppSrc = "1234567890";
+			//_sjmyHelper.Uid = "231216";
+			//_sjmyHelper.intoSQL($@"{_sjmyHelper.ProjectSite}\main\monthcardinit.sql");
+
+			_sjmyHelper.CopyInitial(_sjmyHelper.Gnpy, "1618828027544");
+
+
+		}
 
         private void ConfigInit()
         {
-            _iniFile.IniWriteValue("server", "TradingDel", "0");
+	        
             _iniFile.IniWriteValue("server", "LoadLog", "0");
             _iniFile.IniWriteValue("server", "Single", "0");
             _iniFile.IniWriteValue("client", "FastLogin", "0");
             _iniFile.IniWriteValue("client", "AllUninstall", "0");
+            _iniFile.IniWriteValue("client", "LoadDebug", "0");
 
+		}
+
+        /// <summary>
+        /// 中文字符转英文字符
+        /// </summary>
+        /// <param name="text">字符串</param>
+        /// <returns></returns>
+        private static string ConvertToEn(string text)
+        {
+            const string ch = "。；，？！、“”‘’（）—";
+            const string en = @".;,?!\""""''()-";
+            var c = text.ToCharArray();
+            for (var i = 0; i < c.Length; i++)
+            {
+                var n = ch.IndexOf(c[i]);
+                if (n != -1) c[i] = en[n];
+            }
+            return new string(c);
         }
 
-        
+
+        private string GetGameName()
+        {
+            switch (_sjmyHelper.Gnpy)
+            {
+                case "sjmy":
+                    return "手机魔域";
+                case "myht":
+                    return "魔域互通";
+                case "xsjmy":
+                    return "西山居魔域";
+            }
+
+            return "移动端游戏";
+        }
+
     }
 }

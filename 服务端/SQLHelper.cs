@@ -25,7 +25,7 @@ namespace 服务端
         /// 数据库连接字符串
         /// </summary>
         public static readonly string connectionString =
-            @"Data Source= 192.168.45.25;Initial Catalog = QAGameAuto; User ID = sa; password=123456;Integrated Security = False; Max Pool Size = 512"
+            @"Data Source= 192.168.255.241;Initial Catalog = QAGameAuto; User ID = sa; password=123456;Integrated Security = False; Max Pool Size = 512"
         ;
 
         // Hashtable to store cached parameters

@@ -22,7 +22,7 @@ namespace 服务端
             proc = new Process();
         }
 
-        public void Exe(string cmd)
+        public string Exe(string cmd)
         {
             proc.StartInfo.CreateNoWindow = true;
             proc.StartInfo.FileName = "cmd.exe";
@@ -31,19 +31,22 @@ namespace 服务端
             proc.StartInfo.RedirectStandardOutput = true;
             proc.StartInfo.RedirectStandardError = true;
 
-            proc.OutputDataReceived += sortProcess_OutputDataReceived;
+            //proc.OutputDataReceived += sortProcess_OutputDataReceived;
             proc.Start();
             var cmdWriter = proc.StandardInput;
-            proc.BeginOutputReadLine();
+            //proc.BeginOutputReadLine();
 
             if (!string.IsNullOrEmpty(cmd))
             {
                 cmdWriter.WriteLine(cmd + "&exit");
             }
 
-            cmdWriter.Close();           
+            var result = proc.StandardOutput.ReadToEnd();
+
+			cmdWriter.Close();           
             proc.WaitForExit();
             proc.Close();
+            return result;
 
         }
 

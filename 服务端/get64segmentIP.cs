@@ -29,7 +29,7 @@ namespace 服务端
                         // AddressFamily.InterNetwork表示此IP为IPv4,
                         // AddressFamily.InterNetworkV6表示此地址为IPv6类型
                         if (t.AddressFamily != AddressFamily.InterNetwork) continue;
-                        if (t.ToString().Split('.')[2] == "64")
+                        if (t.ToString().Split('.')[2] == "255"|| t.ToString().Split('.')[2] == "52")
                         {
                             return t.ToString();
                         }

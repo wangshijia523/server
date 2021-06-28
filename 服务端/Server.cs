@@ -78,7 +78,7 @@ namespace 服务端
             catch (Exception)
             {
                 // 显示消息
-                dgShow(sokMsg.RemoteEndPoint + "断开连接！\t\n");
+                dgShow(sokMsg.RemoteEndPoint + "断开连接！");
 
                 // 调用窗体类的关闭移除方法
                 if (sokMsg != null)
